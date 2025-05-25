@@ -1,0 +1,130 @@
+# # This is a basic workflow to help you get started with Actions
+
+# name: CI
+
+# # Controls when the workflow will run
+# on:
+#   # Triggers the workflow on push or pull request events but only for the "main" branch
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
+
+#   # Allows you to run this workflow manually from the Actions tab
+#   workflow_dispatch:
+
+# # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# jobs:
+#   # This workflow contains a single job called "build"
+#   build:
+#     # The type of runner that the job will run on
+#     runs-on: ubuntu-latest
+
+#     # Steps represent a sequence of tasks that will be executed as part of the job
+#     steps:
+#       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+#       - uses: actions/checkout@v4
+
+#       # Runs a single command using the runners shell
+#       - name: Run a one-line script
+#         run: echo Hello, world!
+
+#       # Runs a set of commands using the runners shell
+#       - name: Run a multi-line script
+#         run: |
+#           echo Add other actions to build,
+#           echo test, and deploy your project.
+
+name: Provision Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket_id:
+        description: 'Jira Ticket ID'
+        required: true
+        type: string
+      request_type:
+        description: 'Type of request (zoom, github, office365)'
+        required: true
+        type: string
+      user_email:
+        description: 'User email'
+        required: true
+        type: string
+
+jobs:
+  trigger-workato:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Update Jira with workflow start
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.inputs.ticket_id }}/comment
+          method: 'POST'
+          customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_AUTH_TOKEN }}", "Content-Type": "application/json"}'
+          data: |
+            {
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "🚀 GitHub workflow started for provisioning. Run ID: ${{ github.run_id }}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+      
+      - name: Trigger Workato Recipe
+        id: workato
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.WORKATO_WEBHOOK_URL }}
+          method: 'POST'
+          data: |
+            {
+              "ticket_id": "${{ github.event.inputs.ticket_id }}",
+              "request_type": "${{ github.event.inputs.request_type }}",
+              "user_email": "${{ github.event.inputs.user_email }}",
+              "github_run_id": "${{ github.run_id }}"
+            }
+      
+      - name: Log Workato response
+        run: echo "Workato response status - ${{ steps.workato.outputs.status }}"
+      
+      - name: Update Jira with workflow completion
+        if: always()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.inputs.ticket_id }}/comment
+          method: 'POST'
+          customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_AUTH_TOKEN }}", "Content-Type": "application/json"}'
+          data: |
+            {
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "${{ steps.workato.outcome == 'success' && '✅' || '❌' }} GitHub workflow completed with status: ${{ steps.workato.outcome }}. Workato has been triggered for provisioning."
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+
