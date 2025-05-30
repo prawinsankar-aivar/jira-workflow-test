@@ -1,20 +1,8 @@
 name: Provision Access
 
 on:
-  workflow_dispatch:
-    inputs:
-      ticket_id:
-        description: 'Jira Ticket ID'
-        required: true
-        type: string
-      request_type:
-        description: 'Type of request (zoom, github, office365)'
-        required: true
-        type: string
-      user_email:
-        description: 'User email'
-        required: true
-        type: string
+  repository_dispatch:
+    types: [jira-approval]
 
 jobs:
   trigger-workato:
@@ -26,7 +14,7 @@ jobs:
       - name: Update Jira with workflow start
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.inputs.ticket_id }}/comment
+          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.client_payload.ticket_id }}/comment
           method: 'POST'
           customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_AUTH_TOKEN }}", "Content-Type": "application/json"}'
           data: |
@@ -56,9 +44,9 @@ jobs:
           method: 'POST'
           data: |
             {
-              "ticket_id": "${{ github.event.inputs.ticket_id }}",
-              "request_type": "${{ github.event.inputs.request_type }}",
-              "user_email": "${{ github.event.inputs.user_email }}",
+              "ticket_id": "${{ github.event.client_payload.ticket_id }}",
+              "request_type": "${{ github.event.client_payload.request_type }}",
+              "user_email": "${{ github.event.client_payload.user_email }}",
               "github_run_id": "${{ github.run_id }}"
             }
       
@@ -69,7 +57,7 @@ jobs:
         if: always()
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.inputs.ticket_id }}/comment
+          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.client_payload.ticket_id }}/comment
           method: 'POST'
           customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_AUTH_TOKEN }}", "Content-Type": "application/json"}'
           data: |
