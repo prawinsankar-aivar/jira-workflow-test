@@ -40,7 +40,7 @@ jobs:
         id: workato
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.WORKATO_WEBHOOK_URL }}
+          url: https://webhooks.workato.com/webhooks/rest/07345295-70e9-43a2-8015-4be741900739/github-action
           method: 'POST'
           data: |
             {
