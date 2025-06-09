@@ -16,7 +16,7 @@ jobs:
         with:
           url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.client_payload.ticket_id }}/comment
           method: 'POST'
-          customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_API_TOKEN }}", "Content-Type": "application/json"}'
+          customHeaders: '{"Authorization": "Basic ${{ secrets.JIRA_AUTH_TOKEN }}", "Content-Type": "application/json"}'
           data: |
             {
               "body": {
