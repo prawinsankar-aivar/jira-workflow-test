@@ -14,7 +14,7 @@ jobs:
       - name: Update Jira with workflow start
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.base_url }}/rest/api/3/issue/${{ github.event.client_payload.ticket_id }}/comment
+          url: ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ github.event.client_payload.ticket_id }}/comment
           method: 'POST'
           customHeaders: '{"Authorization": "Basic ${{ secrets.api_token }}", "Content-Type": "application/json"}'
           data: |
