@@ -26,61 +26,7 @@ jobs:
                     "content": [
                       {
                         "type": "text",
-                        "text": "🚀 **GitHub Workflow Started**"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "• **Ticket ID**: ${{ github.event.client_payload.ticket_id }}"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "• **Request Type**: ${{ github.event.client_payload.request_type }}"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "• **User Email**: ${{ github.event.client_payload.user_email }}"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "• **Workflow Run ID**: ${{ github.run_id }}"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "• **Started At**: ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "⏳ Initiating provisioning process via Workato..."
+                        "text": "�� **Workflow Started** - Initiating ${{ github.event.client_payload.request_type }} provisioning for ${{ github.event.client_payload.user_email }}"
                       }
                     ]
                   }
@@ -92,59 +38,35 @@ jobs:
       - name: Trigger Workato Recipe
         id: workato
         run: |
-          echo "�� Triggering Workato recipe for provisioning..."
-          
           response=$(curl -s -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d '{
               "ticket_id": "${{ github.event.client_payload.ticket_id }}",
               "request_type": "${{ github.event.client_payload.request_type }}",
               "user_email": "${{ github.event.client_payload.user_email }}",
-              "github_run_id": "${{ github.run_id }}",
-              "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "github_run_id": "${{ github.run_id }}"
             }' \
             "https://webhooks.workato.com/webhooks/rest/07345295-70e9-43a2-8015-4be741900739/github-action")
           
-          # Extract status code from response
           status_code="${response: -3}"
-          response_body="${response%???}"
-          
           echo "status_code=$status_code" >> $GITHUB_OUTPUT
-          echo "response_body=$response_body" >> $GITHUB_OUTPUT
           
-          # Check if request was successful (2xx status codes)
           if [[ $status_code -ge 200 && $status_code -lt 300 ]]; then
             echo "outcome=success" >> $GITHUB_OUTPUT
-            echo "message=Workato recipe triggered successfully" >> $GITHUB_OUTPUT
           else
             echo "outcome=failure" >> $GITHUB_OUTPUT
-            echo "message=Failed to trigger Workato recipe" >> $GITHUB_OUTPUT
           fi
-      
-      - name: Log Workato response
-        run: |
-          echo "📊 Workato Response Summary:"
-          echo "• Status Code: ${{ steps.workato.outputs.status_code }}"
-          echo "• Outcome: ${{ steps.workato.outputs.outcome }}"
-          echo "• Message: ${{ steps.workato.outputs.message }}"
-          echo "• Response Body: ${{ steps.workato.outputs.response_body }}"
       
       - name: Update Jira with workflow completion
         if: always()
         run: |
-          # Determine status emoji and message based on outcome
           if [[ "${{ steps.workato.outputs.outcome }}" == "success" ]]; then
             emoji="✅"
             status_msg="completed successfully"
-            color="green"
           else
             emoji="❌"
             status_msg="failed"
-            color="red"
           fi
-          
-          # Get current timestamp
-          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
           curl -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_AUTH_TOKEN }}" \
@@ -159,79 +81,7 @@ jobs:
                     \"content\": [
                       {
                         \"type\": \"text\",
-                        \"text\": \"$emoji **GitHub Workflow $status_msg**\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Ticket ID**: ${{ github.event.client_payload.ticket_id }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Request Type**: ${{ github.event.client_payload.request_type }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **User Email**: ${{ github.event.client_payload.user_email }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Workflow Run ID**: ${{ github.run_id }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Workflow URL**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Workato Status**: ${{ steps.workato.outputs.message }}\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"• **Completed At**: $timestamp\"
-                      }
-                    ]
-                  },
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"📋 **Next Steps**: ${{ steps.workato.outputs.outcome == 'success' && 'Provisioning process initiated. You will receive updates as the process completes.' || 'Provisioning failed to start. Please contact support or retry the request.' }}\"
+                        \"text\": \"$emoji **Workflow $status_msg** - ${{ github.event.client_payload.request_type }} provisioning ${{ steps.workato.outputs.outcome == 'success' && 'initiated' || 'failed to start' }}.\"
                       }
                     ]
                   }
